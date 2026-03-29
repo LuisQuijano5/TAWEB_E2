@@ -73,6 +73,13 @@ export async function GET() {
          return NextResponse.json({ error: "Failed to apply consensus" }, { status: 500 });
       }
 
+      nodeState.pendingTransactions = nodeState.pendingTransactions.filter(tx => {
+        const yaEstaMinada = longestChain.some(
+          (bloque: any) => bloque.persona_id === tx.persona_id && bloque.programa_id === tx.programa_id
+        );
+        return !yaEstaMinada; // Si ya está minada, la descartamos.
+      });
+
       return NextResponse.json({ 
         message: "Chain replaced", 
         chain: longestChain 

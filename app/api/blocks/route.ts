@@ -62,6 +62,8 @@ export async function POST(request: Request) {
       tx => tx.titulo_obtenido !== newBlock.titulo_obtenido || tx.persona_id !== newBlock.persona_id
     );
 
+    
+
     return NextResponse.json({ message: "Block accepted" }, { status: 200 });
 
   } catch (error) {

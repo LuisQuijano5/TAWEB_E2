@@ -1,0 +1,957 @@
+openapi: 3.0.3
+info:
+  title: EXA-TA-WEB2 Academic Blockchain Network API
+  version: 1.0.0
+  description: >
+    Distributed blockchain system where each node manages academic degrees,
+    propagates transactions, mines blocks, and reaches consensus.
+
+servers:
+  - url: http://10.173.212.x:8001/api
+
+tags:
+  - name: Nodes
+  - name: Transactions
+  - name: Blocks
+  - name: Blockchain
+  - name: Personas
+  - name: Instituciones
+  - name: Programas
+  - name: Catalogos
+
+components:
+  schemas:
+    Transaction:
+      type: object
+      required:
+        - persona_id
+        - institucion_id
+        - programa_id
+        - fecha_fin
+        - titulo_obtenido
+        - firmado_por
+      properties:
+        persona_id:
+          type: string
+        institucion_id:
+          type: string
+        programa_id:
+          type: string
+        fecha_inicio:
+          type: string
+          format: date
+        fecha_fin:
+          type: string
+          format: date
+        titulo_obtenido:
+          type: string
+        numero_cedula:
+          type: string
+        titulo_tesis:
+          type: string
+        menciones:
+          type: string
+        firmado_por:
+          type: string
+          description: Node or authority that signs the transaction
+
+    Block:
+      type: object
+      required:
+        - persona_id
+        - institucion_id
+        - programa_id
+        - fecha_fin
+        - titulo_obtenido
+        - hash_actual
+        - hash_anterior
+        - nonce
+      properties:
+        persona_id:
+          type: string
+        institucion_id:
+          type: string
+        programa_id:
+          type: string
+        fecha_inicio:
+          type: string
+          format: date
+        fecha_fin:
+          type: string
+          format: date
+        titulo_obtenido:
+          type: string
+        numero_cedula:
+          type: string
+        titulo_tesis:
+          type: string
+        menciones:
+          type: string
+        firmado_por:
+          type: string
+        hash_actual:
+          type: string
+        hash_anterior:
+          type: string
+        nonce:
+          type: integer
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+
+    # DATOS BASE 
+    Persona:
+      type: object
+      required: [nombre, apellido_paterno]
+      properties:
+        id:
+          type: string
+        nombre:
+          type: string
+        apellido_paterno:
+          type: string
+        apellido_materno:
+          type: string
+        curp:
+          type: string
+        correo:
+          type: string
+        creado_en:
+          type: string
+          format: date-time
+
+    Institucion:
+      type: object
+      required: [nombre]
+      properties:
+        id:
+          type: string
+        nombre:
+          type: string
+        pais:
+          type: string
+        estado:
+          type: string
+        creado_en:
+          type: string
+          format: date-time
+
+    Programa:
+      type: object
+      required: [nombre, nivel_grado_id]
+      properties:
+        id:
+          type: string
+        nombre:
+          type: string
+        nivel_grado_id:
+          type: integer
+        creado_en:
+          type: string
+          format: date-time
+
+    NivelGrado:
+      type: object
+      properties:
+        id:
+          type: integer
+        nombre:
+          type: string
+
+paths:
+
+  /nodes/register:
+    post:
+      tags: [Nodes]
+      summary: Register node manually in the peer list
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [node]
+              properties:
+                node:
+                  type: string
+      responses:
+        '200':
+          description: Node registered successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '400':
+          description: Invalid URL or attempted to connect to self
+        '409':
+          description: Node is already registered
+
+  /nodes:
+    get:
+      tags: [Nodes]
+      summary: Get known peers and mempool status
+      responses:
+        '200':
+          description: List of peers and pending mempool count
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  peers:
+                    type: array
+                    items:
+                      type: string
+                  pendingCount:
+                    type: integer
+
+  /transactions:
+    get:
+      tags: [Transactions]
+      summary: Get pending transactions (Mempool)
+      responses:
+        '200':
+          description: List of pending transactions ready to be mined
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  transactions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Transaction'
+    post:
+      tags: [Transactions]
+      summary: Submit a new transaction from UI and broadcast it
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Transaction'
+      responses:
+        '200':
+          description: Transaction accepted and broadcasted
+        '400':
+          description: Invalid transaction or missing references
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /internal/transactions:
+    post:
+      tags: [Transactions]
+      summary: Receive propagated transaction from a peer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Transaction'
+      responses:
+        '200':
+          description: Transaction processed and saved to mempool
+
+  /mine:
+    post:
+      tags: [Blocks]
+      summary: Mine a block from pending transactions
+      responses:
+        '200':
+          description: Block mined successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  block:
+                    $ref: '#/components/schemas/Block'
+
+  /blocks:
+    post:
+      tags: [Blocks]
+      summary: Receive a mined block from another node
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [block]
+              properties:
+                block:
+                  $ref: '#/components/schemas/Block'
+      responses:
+        '200':
+          description: Block accepted or already synced
+        '201':
+          description: Block accepted and saved
+        '409':
+          description: Invalid block, desync detected. Triggers auto-consensus.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /chain:
+    get:
+      tags: [Blockchain]
+      summary: Get full blockchain
+      responses:
+        '200':
+          description: Chain data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  length:
+                    type: integer
+                  chain:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Block'
+
+  /nodes/resolve:
+    get:
+      tags: [Blockchain]
+      summary: Resolve conflicts using longest valid chain
+      responses:
+        '200':
+          description: Consensus result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  chain:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Block'
+
+  /ping:
+    get:
+      tags: [Nodes]
+      summary: Health check
+      responses:
+        '200':
+          description: Node is alive
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  # DATOS BASE (SOLO GETS)
+  /personas:
+    get:
+      tags: [Personas]
+      summary: Get all personas
+      responses:
+        '200':
+          description: List of personas
+
+  /personas/{id}:
+    get:
+      tags: [Personas]
+      summary: Get persona by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Persona found
+    
+  /instituciones:
+    get:
+      tags: [Instituciones]
+      summary: Get all instituciones
+      responses:
+        '200':
+          description: List of instituciones
+
+  /instituciones/{id}:
+    get:
+      tags: [Instituciones]
+      summary: Get institucion by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Institucion found
+  
+  /programas:
+    get:
+      tags: [Programas]
+      summary: Get all programas
+      responses:
+        '200':
+          description: List of programas
+
+  /programas/{id}:
+    get:
+      tags: [Programas]
+      summary: Get programa by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Programa found
+
+
+
+# ==============================
+#       VERSION ANTERIOR
+# ==============================
+# openapi: 3.0.3
+# info:
+#   title: EXA-TA-WEB2 Academic Blockchain Network API
+#   version: 1.0.0
+#   description: >
+#     Distributed blockchain system where each node manages academic degrees,
+#     propagates transactions, mines blocks, and reaches consensus.
+
+# servers:
+#   - url: http://10.173.212.x:8001/api
+
+# tags:
+#   - name: Nodes
+#   - name: Transactions
+#   - name: Blocks
+#   - name: Blockchain
+
+#   # DATOS BASE 
+#   - name: Personas
+#   - name: Instituciones
+#   - name: Programas
+#   - name: Catalogos
+
+# components:
+#   schemas:
+
+#     Transaction:
+#       type: object
+#       required:
+#         - persona_id
+#         - institucion_id
+#         - programa_id
+#         - fecha_fin
+#         - titulo_obtenido
+#         - firmado_por
+#       properties:
+#         persona_id:
+#           type: string
+#         institucion_id:
+#           type: string
+#         programa_id:
+#           type: string
+#         fecha_inicio:
+#           type: string
+#           format: date
+#         fecha_fin:
+#           type: string
+#           format: date
+#         titulo_obtenido:
+#           type: string
+#         numero_cedula:
+#           type: string
+#         titulo_tesis:
+#           type: string
+#         menciones:
+#           type: string
+#         firmado_por:
+#           type: string
+#           description: Node or authority that signs the transaction
+
+#     Block:
+#       type: object
+#       required:
+#         - persona_id
+#         - institucion_id
+#         - programa_id
+#         - fecha_fin
+#         - titulo_obtenido
+#         - hash_actual
+#         - hash_anterior
+#         - nonce
+#       properties:
+#         persona_id:
+#           type: string
+#         institucion_id:
+#           type: string
+#         programa_id:
+#           type: string
+#         fecha_inicio:
+#           type: string
+#           format: date
+#         fecha_fin:
+#           type: string
+#           format: date
+#         titulo_obtenido:
+#           type: string
+#         numero_cedula:
+#           type: string
+#         titulo_tesis:
+#           type: string
+#         menciones:
+#           type: string
+#         firmado_por:
+#           type: string
+#         hash_actual:
+#           type: string
+#         hash_anterior:
+#           type: string
+#         nonce:
+#           type: integer
+
+#     Peer:
+#       type: object
+#       properties:
+#         url:
+#           type: string
+#         lastSeen:
+#           type: integer
+#         failures:
+#           type: integer
+
+#     Error:
+#       type: object
+#       properties:
+#         error:
+#           type: string
+
+#     # DATOS BASE 
+#     Persona:
+#       type: object
+#       required: [nombre, apellido_paterno]
+#       properties:
+#         id:
+#           type: string
+#         nombre:
+#           type: string
+#         apellido_paterno:
+#           type: string
+#         apellido_materno:
+#           type: string
+#         curp:
+#           type: string
+#         correo:
+#           type: string
+#         creado_en:
+#           type: string
+#           format: date-time
+
+#     Institucion:
+#       type: object
+#       required: [nombre]
+#       properties:
+#         id:
+#           type: string
+#         nombre:
+#           type: string
+#         pais:
+#           type: string
+#         estado:
+#           type: string
+#         creado_en:
+#           type: string
+#           format: date-time
+
+#     Programa:
+#       type: object
+#       required: [nombre, nivel_grado_id]
+#       properties:
+#         id:
+#           type: string
+#         nombre:
+#           type: string
+#         nivel_grado_id:
+#           type: integer
+#         creado_en:
+#           type: string
+#           format: date-time
+
+#     NivelGrado:
+#       type: object
+#       properties:
+#         id:
+#           type: integer
+#         nombre:
+#           type: string
+
+
+
+# paths:
+
+#   # A;ADE UN NODO ESTATICO CONOCIDO DENTRO DE LA RED PARA QUE SE PUEDA PROPAGAR
+#   /nodes/bootstrap:
+#     post:
+#       tags: [Nodes]
+#       summary: Add initial nodes (manual setup)
+#       requestBody:
+#         required: true
+#         content:
+#           application/json:
+#             schema:
+#               type: object
+#               required: [nodes]
+#               properties:
+#                 nodes:
+#                   type: array
+#                   items:
+#                     type: string
+#       responses:
+#         '200':
+#           description: Nodes added
+
+#   # MANDA SU INFORMACION A EL NODO BOOTSTRAPPED. NO LO VAMOS A USAR 
+#   /nodes/register:
+#     post:
+#       tags: [Nodes]
+#       summary: Register node and receive peers
+#       requestBody:
+#         required: true
+#         content:
+#           application/json:
+#             schema:
+#               type: object
+#               required: [node]
+#               properties:
+#                 node:
+#                   type: string
+#       responses:
+#         '200':
+#           description: Peer list
+#           content:
+#             application/json:
+#               schema:
+#                 type: object
+#                 properties:
+#                   peers:
+#                     type: array
+#                     items:
+#                       type: string
+
+#   # SOLICITA LOS PEERS DE OTRO NODO
+#   /nodes:
+#     get:
+#       tags: [Nodes]
+#       summary: Get known peers
+#       responses:
+#         '200':
+#           description: List of peers
+#           content:
+#             application/json:
+#               schema:
+#                 type: object
+#                 properties:
+#                   peers:
+#                     type: array
+#                     items:
+#                       $ref: '#/components/schemas/Peer'
+
+#   # MANDA UNA NUEVA TRASNACCION (GRADO) A OTROS, PROPAGA, NO GUARDA EN SUPABASE TDV
+#   /transactions:
+#     post:
+#       tags: [Transactions]
+#       summary: Submit a new transaction
+#       requestBody:
+#         required: true
+#         content:
+#           application/json:
+#             schema:
+#               $ref: '#/components/schemas/Transaction'
+#       responses:
+#         '200':
+#           description: Transaction accepted
+#         '400':
+#           description: Invalid transaction
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+
+#   # RECIBE LA TRANSACCION, NO PROAPAGA, SE SEPARAN PARA EVITAR BUCLES
+#   /internal/transactions:
+#     post:
+#       tags: [Transactions]
+#       summary: Receive propagated transaction
+#       requestBody:
+#         required: true
+#         content:
+#           application/json:
+#             schema:
+#               $ref: '#/components/schemas/Transaction'
+#       responses:
+#         '200':
+#           description: Transaction processed
+
+#   # PARA LLAMAR DENTRO DE SI MISMO A QUE MINE
+#   /mine:
+#     post:
+#       tags: [Blocks]
+#       summary: Mine a block from pending transactions
+#       responses:
+#         '200':
+#           description: Block mined
+#           content:
+#             application/json:
+#               schema:
+#                 type: object
+#                 properties:
+#                   block:
+#                     $ref: '#/components/schemas/Block'
+
+#   # MANDA UN BLOQUE A SUS PEERS
+#   /blocks:
+#     post:
+#       tags: [Blocks]
+#       summary: Receive a mined block from another node
+#       requestBody:
+#         required: true
+#         content:
+#           application/json:
+#             schema:
+#               type: object
+#               required: [block]
+#               properties:
+#                 block:
+#                   $ref: '#/components/schemas/Block'
+#       responses:
+#         '200':
+#           description: Block accepted
+#         '409':
+#           description: Invalid block
+#           content:
+#             application/json:
+#               schema:
+#                 $ref: '#/components/schemas/Error'
+
+#   # OBTIENE TODA LA CADENA
+#   /chain:
+#     get:
+#       tags: [Blockchain]
+#       summary: Get full blockchain
+#       responses:
+#         '200':
+#           description: Chain data
+#           content:
+#             application/json:
+#               schema:
+#                 type: object
+#                 properties:
+#                   length:
+#                     type: integer
+#                   chain:
+#                     type: array
+#                     items:
+#                       $ref: '#/components/schemas/Block'
+
+#   # SOLUCIONAR CONFLICTOS
+#   /nodes/resolve:
+#     get:
+#       tags: [Blockchain]
+#       summary: Resolve conflicts using longest valid chain
+#       responses:
+#         '200':
+#           description: Consensus result
+#           content:
+#             application/json:
+#               schema:
+#                 type: object
+#                 properties:
+#                   message:
+#                     type: string
+#                   chain:
+#                     type: array
+#                     items:
+#                       $ref: '#/components/schemas/Block'
+
+#   # COMPROBAR QUE SUS PEERS SIGUEN ACTIVOS, AUNQUE MEDIO INNECESARIO MEJOR CON 3 FALLAS, PONGALO PARA PROBAR CON ZEROTIER SI ACASO
+#   /ping:
+#     get:
+#       tags: [Nodes]
+#       summary: Health check
+#       responses:
+#         '200':
+#           description: Node is alive
+#           content:
+#             application/json:
+#               schema:
+#                 type: object
+#                 properties:
+#                   status:
+#                     type: string
+#                     example: ok
+
+#   # DATOS BASE
+#     # EN REALIDAD NO SE OCUPAN LOS POST, PUT, DELETE, SOLO LOS GETS PORQUE LOS DATOS DEBEN SER ESTATICOS
+#     # SI DECIDEN MEJORAR SU DASHBOARD, PARA PODER EDITAR (CON CUIDADO PQ NUESTRAS BASES DE DATOS DE 
+#     # EN ESTAS TABLAS DEBEN ESTAR SINCRONIZADAS), PUEDEN USAR ESTOS ENDPOINTS, PERO LOS GET SI SON OBLIGATORIOS
+#   /personas:
+#     get:
+#       tags: [Personas]
+#       summary: Get all personas
+#       responses:
+#         '200':
+#           description: List of personas
+
+#     post: #SIN USO
+#       tags: [Personas]
+#       summary: Create persona
+#       requestBody:
+#         required: true
+#         content:
+#           application/json:
+#             schema:
+#               $ref: '#/components/schemas/Persona'
+#       responses:
+#         '201':
+#           description: Persona created
+
+#   /personas/{id}:
+#     get:
+#       tags: [Personas]
+#       summary: Get persona by ID
+#       parameters:
+#         - in: path
+#           name: id
+#           required: true
+#           schema:
+#             type: string
+#       responses:
+#         '200':
+#           description: Persona found
+
+#     put: #SIN USO
+#       tags: [Personas]
+#       summary: Update persona
+#       parameters:
+#         - in: path
+#           name: id
+#           required: true
+#           schema:
+#             type: string
+#       requestBody:
+#         required: true
+#         content:
+#           application/json:
+#             schema:
+#               $ref: '#/components/schemas/Persona'
+#       responses:
+#         '200':
+#           description: Updated
+
+#     delete: #SIN USO
+#       tags: [Personas]
+#       summary: Delete persona
+#       parameters:
+#         - in: path
+#           name: id
+#           required: true
+#           schema:
+#             type: string
+#       responses:
+#         '204':
+#           description: Deleted
+    
+#   /instituciones:
+#     get:
+#       tags: [Instituciones]
+#       summary: Get all instituciones
+#       responses:
+#         '200':
+#           description: List of instituciones
+
+#     post: #SIN USO
+#       tags: [Instituciones]
+#       summary: Create institucion
+#       responses:
+#         '201':
+#           description: Institucion created
+
+#   /instituciones/{id}:
+#     get:
+#       tags: [Instituciones]
+#       summary: Get institucion by ID
+#       responses:
+#         '200':
+#           description: Institucion found
+#     put: #SIN USO
+#       tags: [Instituciones]
+#       summary: Update institucion
+#       responses:
+#         '200':
+#           description: Institucion updated
+#     delete: #SIN USO
+#       tags: [Instituciones]
+#       summary: Delete institucion
+#       responses:
+#         '204':
+#           description: Institucion deleted
+  
+#   /programas:
+#     get:
+#       tags: [Programas]
+#       summary: Get all programas
+#       responses:
+#         '200':
+#           description: List of programas
+#     post: #SIN USO
+#       tags: [Programas]
+#       summary: Create programa
+#       responses:
+#         '201':
+#           description: Programa created
+
+#   /programas/{id}:
+#     get:
+#       tags: [Programas]
+#       summary: Get programa by ID
+#       responses:
+#         '200':
+#           description: Programa found
+#     put: #SIN USO
+#       tags: [Programas]
+#       summary: Update programa
+#       responses:
+#         '200':
+#           description: Programa updated
+#     delete: #SIN USO
+#       tags: [Programas]
+#       summary: Delete programa
+#       responses:
+#         '204':
+#           description: Programa deleted
+  
+#   /niveles-grado: #SIN USO
+#     get:
+#       tags: [Catalogos]
+#       summary: Get degree levels
+#       responses:
+#         '200':
+#           description: List of levels
