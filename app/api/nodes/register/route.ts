@@ -1,41 +1,27 @@
 import { NextResponse } from 'next/server';
 import { nodeState } from '@/lib/state';
-import { networkManager } from '@/lib/network'; 
 import { logger } from '@/lib/logger';
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const newNodeUrl = body.node;
+    const { node } = await request.json();
 
-    if (!newNodeUrl) {
-      return NextResponse.json({ error: "Please provide a valid node URL" }, { status: 400 });
+    if (!node) return NextResponse.json({ error: "URL inválida" }, { status: 400 });
+
+    if (node === process.env.MY_NODE_URL) {
+      return NextResponse.json({ error: "No puedes conectarte a ti mismo." }, { status: 400 });
     }
 
-    // Intentar agregarlo. addPeer ahora devuelve true si es nuevo.
-    const isNewNode = nodeState.addPeer(newNodeUrl);
-    
-    if (isNewNode) {
-      logger.info(`Nuevo nodo descubierto y registrado: ${newNodeUrl}`);
-      
-      // GOSSIP
-      networkManager.broadcastNewPeer(newNodeUrl).catch(err => 
-        logger.error("Error en el gossip de nodos", err)
-      );
-    } else {
-      logger.info(`Nodo ya conocido ignorado: ${newNodeUrl}`);
+    const isNew = nodeState.addPeer(node);
+    if (!isNew) {
+       return NextResponse.json({ error: "Este nodo ya está registrado." }, { status: 409 });
     }
 
-    // 3. Devolvemos nuestra lista actual para que el que preguntó también se actualice
-    const currentPeers = nodeState.getPeers();
+    nodeState.addPeer(node);
+    logger.info(`Nodo registrado manualmente: ${node}`);
 
-    return NextResponse.json({ 
-      message: "Node registered successfully", 
-      peers: currentPeers 
-    }, { status: 200 });
-
+    return NextResponse.json({ message: "Node registered successfully" }, { status: 200 });
   } catch (error) {
-    logger.error("Error registering node", error);
-    return NextResponse.json({ error: "Invalid request format" }, { status: 400 });
+    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 }

@@ -5,6 +5,16 @@ import { logger } from '@/lib/logger';
 import { Transaction } from '@/types/transaction';
 import { validateTransactionReferences } from '@/lib/db';
 
+export async function GET() {
+  return NextResponse.json(
+    { transactions: nodeState.pendingTransactions },
+    { 
+      status: 200,
+      headers: { 'Cache-Control': 'no-store, max-age=0' } 
+    }
+  );
+}
+
 export async function POST(request: Request) {
   try {
     const tx: Transaction = await request.json();

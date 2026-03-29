@@ -17,7 +17,7 @@ export class NetworkManager {
 
     logger.info(`Broadcasting transaction to ${peers.length} peers...`);
 
-    // We use Promise.all to send requests to all peers simultaneously
+    // Use Promise.all to send requests to all peers simultaneously
     await Promise.all(
       peers.map(async (peerUrl) => {
         try {
@@ -33,8 +33,8 @@ export class NetworkManager {
           }
         } catch (error) {
           logger.error(`Fallo de conexión con el nodo ${peerUrl}. Sumando fallo...`);
-          nodeState.incrementFailure(peerUrl);
-          nodeState.removeDeadPeers(3);
+          // nodeState.incrementFailure(peerUrl);
+          // nodeState.removeDeadPeers(3);
         }
       })
     );
@@ -63,8 +63,8 @@ export class NetworkManager {
           }
         } catch (error) {
           logger.error(`Fallo de conexión con el nodo ${peerUrl}. Sumando fallo...`);
-          nodeState.incrementFailure(peerUrl);
-          nodeState.removeDeadPeers(3);
+          // nodeState.incrementFailure(peerUrl);
+          // nodeState.removeDeadPeers(3);
         }
       })
     );
@@ -76,7 +76,7 @@ export class NetworkManager {
     
     if (peersToNotify.length === 0) return;
 
-    logger.info(`Pasando el chisme del nuevo nodo ${newNodeUrl} a ${peersToNotify.length} contactos...`);
+    logger.info(`Pasando del nuevo nodo ${newNodeUrl} a ${peersToNotify.length} contactos...`);
 
     await Promise.all(
       peersToNotify.map(async (peerUrl) => {
@@ -87,7 +87,7 @@ export class NetworkManager {
             body: JSON.stringify({ node: newNodeUrl }),
           });
         } catch (error) {
-          logger.warn(`No se le pudo pasar el chisme a ${peerUrl}`);
+          logger.warn(`No se le pudo pasar a ${peerUrl}`);
         }
       })
     );

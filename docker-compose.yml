@@ -10,6 +10,7 @@ services:
       - .env  
     environment:
       - NEXT_PUBLIC_NODE_NAME=Nodo-1
+      - MY_NODE_URL=http://node-1:3000
     volumes:
       - .:/app                  
       - /app/.next              
@@ -29,6 +30,7 @@ services:
       - .env 
     environment:
       - NEXT_PUBLIC_NODE_NAME=Nodo-2
+      - MY_NODE_URL=http://node-2:3000
     volumes:
       - .:/app                 
       - /app/.next              

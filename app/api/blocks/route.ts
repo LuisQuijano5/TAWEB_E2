@@ -22,7 +22,13 @@ export async function POST(request: Request) {
 
     if (!isValid) {
       logger.warn(`Rejected invalid block from peer: ${newBlock.hash_actual}`);
-      return NextResponse.json({ error: "Block is invalid or out of sync" }, { status: 409 }); /// Aqui llamar a resolve creoo que estaria bien
+      const resolveUrl = new URL('/api/nodes/resolve', request.url).href;
+      fetch(resolveUrl, { method: 'GET' })
+        .catch(err => logger.error("Fallo al detonar el auto-consenso", err));
+
+      return NextResponse.json({ 
+        error: "Block is invalid or out of sync. Auto-sync triggered." 
+      }, { status: 409 });
     }
 
     // Block is valid. Save it to local Supabase ledger
